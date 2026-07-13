@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "modelscope-skills",
+  "owner": {
+    "name": "ModelScope"
+  },
+  "metadata": {
+    "description": "Equip your agents with skills to interact with ModelScope — model/dataset management, Studio deployment, MCP services, and Skills Center.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "ms-hub",
+      "source": "./skills/ms-hub",
+      "strict": false,
+      "skills": "./",
+      "description": "Unified ModelScope operations hub. Manage models, datasets, Studios, MCP services, and Skills Center via OpenAPI, CLI, and SDK."
+    },
+    {
+      "name": "ms-studio-deploy",
+      "source": "./skills/ms-studio-deploy",
+      "strict": false,
+      "skills": "./",
+      "description": "Deploy local projects to ModelScope Studios (Gradio / Streamlit / Docker / static). API-first workflow with code sync, log monitoring, and auto-diagnosis."
+    }
+  ]
+}
