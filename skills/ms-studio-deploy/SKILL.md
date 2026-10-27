@@ -11,7 +11,7 @@ description: >-
 
 # ModelScope Studio Deployment
 
-> Cross-checked against ModelScope OpenAPI (modelscope_service master, 2026-10-23); previously live-verified with modelscope 1.37.1 / modelscope_hub 0.1.2 (2026-06-29)
+> Cross-checked against ModelScope OpenAPI (modelscope_service master 2026-10-27 + `feat/openAPI_studios_ouath` branch for Studio OAuth app configuration); previously live-verified with modelscope 1.37.1 / modelscope_hub 0.1.2 (2026-06-29)
 
 Deploy a local project to a ModelScope Studio. **This Skill uses OpenAPI as the source of truth**, with the `ms` CLI as an equivalent convenience alias, `modelscope_hub.HubApi` as the API-first Python client, and MCP tools as optional.
 
@@ -192,7 +192,7 @@ curl -X POST "$MODELSCOPE_ENDPOINT/openapi/v1/studios" \
 # Equivalent CLI: ms create ${owner}/${repo} --repo-type studio --sdk-type gradio --private
 ```
 
-Create request fields: `owner`/`repo_name` (required), `sdk_type` (defaults to `gradio`), `visibility` (`public`/`protected`/`private`), `display_name`, `description`, `cover_image`, `license` (defaults to `apache-2.0`), `hardware`, `base_image`, `sdk_version`. `private` (boolean) is deprecated — use `visibility`. `hardware` may be omitted: the server then normalizes to the current default free instance tier (free tiers use `platform/…`/`xgpu/…` prefixes; paid uses `paid/<InstanceType>`).
+Create request fields: `owner`/`repo_name` (required), `sdk_type` (defaults to `gradio`), `visibility` (`public`/`protected`/`private`), `display_name`, `description`, `cover_image`, `license` (defaults to `apache-2.0`), `hardware`, `base_image`, `sdk_version`. `private` (boolean) is deprecated — use `visibility`. `hardware` may be omitted: the server then normalizes to the current default free instance tier (free tiers use `platform/…`/`xgpu/…` prefixes; paid uses `paid/<InstanceType>`). OAuth app fields (`oauth_enabled`, `oauth_scope`, `oauth_token_expire_time`, `oauth_callback_urls`, `oauth_homepage_url`) may also be set at creation — see the endpoint reference for the tri-state group semantics.
 
 **Already exists → update settings as needed:**
 
@@ -204,6 +204,8 @@ curl -X PATCH "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/settings
 ```
 
 Changes to `sdk_type`, `sdk_version`, `base_image`, and `hardware` require redeployment to take effect. xGPU requires an application (https://modelscope.cn/docs/studios/xGPU).
+
+Settings also accepts the OAuth app group `oauth_enabled` / `oauth_scope` / `oauth_token_expire_time` / `oauth_callback_urls` / `oauth_homepage_url` — applied only when `oauth_enabled` is present (`true` = enable/reconfigure, `false` = disable). Valid scopes: `openid`, `profile`, `manage-mcp-deployment`, `list-operational-mcp`, `read-repos`, `api-inference`. Equivalent CLI: `ms settings o/r --repo-type studio --oauth-enabled --oauth-scope "openid profile" --oauth-token-expire-time 4 --oauth-callback-url https://example.org/cb`. See `references/openapi-studio-endpoints.md` for the full contract.
 
 ### Step 4: Handle sensitive information
 

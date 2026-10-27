@@ -4,7 +4,7 @@ Base URL: `$MODELSCOPE_ENDPOINT/openapi/v1`
 
 Authentication: `Authorization: Bearer $MODELSCOPE_API_KEY`
 
-> Field-level spec cross-checked against the modelscope_service master branch (2026-10-23).
+> Field-level spec cross-checked against the modelscope_service master branch (2026-10-27) and the `feat/openAPI_studios_ouath` branch (Studio OAuth app configuration; `oauth_*` fields are ignored by master deployments that predate the feature).
 
 ## List Studios
 
@@ -62,6 +62,11 @@ Request fields:
 | `hardware` | No | Free: `platform/…`/`xgpu/…` prefixes; paid: `paid/<InstanceType>`. May be omitted — the server normalizes to the current default free instance tier |
 | `base_image` | No | Defaults to the latest |
 | `sdk_version` | No | Defaults to the latest for `gradio`; validated against the available versions |
+| `oauth_enabled` | No | Enable the Studio's OAuth app configuration (defaults to `false`); requires `oauth_scope`, `oauth_token_expire_time`, `oauth_callback_urls` when `true` |
+| `oauth_scope` | No | Space-separated OAuth scopes; valid values: `openid` (ModelScope user identity), `profile` (public user profile), `manage-mcp-deployment` (manage MCP deployments), `list-operational-mcp` (list deployed MCP servers), `read-repos` (read personal repositories), `api-inference` (call API Inference) |
+| `oauth_token_expire_time` | No | Token lifetime enum: `1`=15min, `2`=1hour, `3`=8hours, `4`=1day, `5`=1week, `6`=30days |
+| `oauth_callback_urls` | No | Array of OAuth callback URLs; each entry needs a scheme and a host |
+| `oauth_homepage_url` | No | OAuth app homepage URL |
 
 ### sdk_type values
 
@@ -103,7 +108,7 @@ curl "$MODELSCOPE_ENDPOINT/openapi/v1/studios/{owner}/{repo_name}" \
   -H "Authorization: Bearer $MODELSCOPE_API_KEY"
 ```
 
-Response `data` fields: `id` (`owner/repo_name`), `repo_name`, `display_name`, `owner`, `description`, `cover_image`, `likes`, `view_count`, `tags[]`, `visibility` (`public`/`protected`/`private`), `private` (deprecated), `status`, `created_at`, `last_modified`, `sdk_type`, `sdk_version`, `hardware` (desired config), `base_image` (omitted for Docker), `license`, `host`, `mcp_support`, and `runtime` (`status`, `active_config` {`hardware`, `base_image`, `sdk_type`, `sdk_version`} — the config actually running, `created_at`, `error_message` on failure).
+Response `data` fields: `id` (`owner/repo_name`), `repo_name`, `display_name`, `owner`, `description`, `cover_image`, `likes`, `view_count`, `tags[]`, `visibility` (`public`/`protected`/`private`), `private` (deprecated), `status`, `created_at`, `last_modified`, `sdk_type`, `sdk_version`, `hardware` (desired config), `base_image` (omitted for Docker), `license`, `host`, `mcp_support`, `runtime` (`status`, `active_config` {`hardware`, `base_image`, `sdk_type`, `sdk_version`} — the config actually running, `created_at`, `error_message` on failure), and when the OAuth app is configured: `oauth_enabled`, `oauth_scope`, `oauth_token_expire_time`, `oauth_callback_urls`, `oauth_homepage_url`.
 
 ## Deploy/restart a Studio
 
@@ -163,7 +168,31 @@ curl -X PATCH "$MODELSCOPE_ENDPOINT/openapi/v1/studios/{owner}/{repo_name}/setti
   }'
 ```
 
-Send only the fields you want to change; omitted fields keep their original values. Updatable: `display_name` (≤ 128), `description` (≤ 2000), `cover_image`, `license`, `visibility` (`public`/`protected`/`private`), `private` (deprecated), `sdk_type`, `sdk_version`, `base_image`, `hardware`.
+Send only the fields you want to change; omitted fields keep their original values. Updatable: `display_name` (≤ 128), `description` (≤ 2000), `cover_image`, `license`, `visibility` (`public`/`protected`/`private`), `private` (deprecated), `sdk_type`, `sdk_version`, `base_image`, `hardware`, `oauth_enabled`, `oauth_scope`, `oauth_token_expire_time`, `oauth_callback_urls`, `oauth_homepage_url`.
+
+The `oauth_*` group is tri-state: the server applies it **only when `oauth_enabled` is present in the payload** — pass `true` to enable/reconfigure, `false` to disable (the other `oauth_*` fields are then dropped together). Omit `oauth_enabled` entirely and the other `oauth_*` fields are ignored, so always send the flag alongside them.
+
+```bash
+# Enable / reconfigure the OAuth app
+curl -X PATCH "$MODELSCOPE_ENDPOINT/openapi/v1/studios/{owner}/{repo_name}/settings" \
+  -H "Authorization: Bearer $MODELSCOPE_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "oauth_enabled": true,
+    "oauth_scope": "openid profile read-repos",
+    "oauth_token_expire_time": 4,
+    "oauth_callback_urls": ["https://example.org/oauth/callback"],
+    "oauth_homepage_url": "https://example.org"
+  }'
+
+# Disable it
+curl -X PATCH "$MODELSCOPE_ENDPOINT/openapi/v1/studios/{owner}/{repo_name}/settings" \
+  -H "Authorization: Bearer $MODELSCOPE_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"oauth_enabled": false}'
+```
+
+Valid `oauth_scope` values (space-separated, multiple allowed): `openid`, `profile`, `manage-mcp-deployment`, `list-operational-mcp`, `read-repos`, `api-inference`. `oauth_token_expire_time` uses the enum `1`=15min … `6`=30days. `oauth_callback_urls` entries need a scheme and a host.
 
 Changes to `sdk_type`, `sdk_version`, `base_image`, and `hardware` require a redeploy to take effect.
 
